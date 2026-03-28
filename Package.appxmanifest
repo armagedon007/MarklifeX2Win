@@ -1,0 +1,10 @@
+<Capabilities>
+    <DeviceCapability Name="bluetooth" />
+    <DeviceCapability Name="bluetooth.genericAttributeProfile">
+        <Device Id="any">
+            <Function Type="name:advertising"/>
+            <Function Type="name:browsing"/>
+            <Function Type="name:pairing"/>
+        </Device>
+    </DeviceCapability>
+</Capabilities>

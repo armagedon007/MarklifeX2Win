@@ -1,0 +1,11 @@
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin.csproj.AssemblyReference.cache
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MainWindow.baml
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\App.baml
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MainWindow.g.cs
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\App.g.cs
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin_MarkupCompile.cache
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin.g.resources
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin.AssemblyInfoInputs.cache
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin.AssemblyInfo.cs
+C:\Users\chai9\Downloads\MarklifeX2Win-main\MarklifeX2Win-main\obj\Debug\net8.0-windows\MarklifeWin.csproj.CoreCompileInputs.cache
