@@ -2,469 +2,315 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.GenericAttributeProfile;
-using Windows.Devices.Enumeration;
-using Windows.Storage.Streams;
-using Windows.Devices.Bluetooth.Advertisement;
 using System.Diagnostics;
+using MarklifeWin.Bluetooth;
 
 namespace MarklifeWin
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private BluetoothLEDevice? _connectedDevice;
-        private GattCharacteristic? _writeCharacteristic;
-        private BluetoothLEAdvertisementWatcher? _bleWatcher;
-
-        private NamedPipeServerStream? _pipeServer;
-        private Task? _pipeTask;
-        private readonly string _pipeName = "marklife-print-pipe";
-        //private BluetoothDeviceInfo? _connectedDeviceInfo;
-        //private BluetoothClient? _bluetoothClient;;
-
-        private Stream? _stream;
+        private readonly IPrinterManager _bt;
+        private bool _isScanning;
 
         public ObservableCollection<DeviceItem> Devices { get; } = new();
 
-        private bool _isScanning;
         public bool IsScanning
         {
             get => _isScanning;
             set { _isScanning = value; OnPropertyChanged(); }
         }
 
-        public MainWindow()
+        public MainWindow(IPrinterManager bt)
         {
+            _bt = bt;
             InitializeComponent();
             DataContext = this;
-            StartPipeServer();
+            WireEvents();
         }
 
-        private void DragWindow(object sender, MouseButtonEventArgs e)
+        private void WireEvents()
         {
-            if (e.LeftButton == MouseButtonState.Pressed)
+            _bt.DeviceDiscovered       += OnDeviceDiscovered;
+            _bt.ConnectionStateChanged += OnConnectionStateChanged;
+            _bt.StatusChanged          += OnStatusChanged;
+            _bt.BatteryLevelChanged    += OnBatteryLevelChanged;
+            _bt.FirmwareReceived       += (_, v) => UpdateDevice(d => d.Firmware = v ?? "-");
+            _bt.SerialReceived         += (_, v) => UpdateDevice(d => d.Serial   = v ?? "-");
+            _bt.PaperLevelReceived     += (_, v) => UpdateDevice(d => d.Paper    = v.HasValue ? $"{v}%" : "-");
+            _bt.ShutdownTimeReceived   += OnShutdownTimeReceived;
+            _bt.MacAddressReceived     += (_, v) => UpdateDevice(d => d.Mac      = v ?? "-");
+        }
+
+        // ── Event handlers ───────────────────────────────────────────────────
+
+        private void OnDeviceDiscovered(object? sender, string info)
+        {
+            var parts = info.Split('|');
+            if (parts.Length < 2) return;
+            var name = parts[0];
+            var id   = parts[1];
+
+            Dispatcher.Invoke(() =>
             {
-                DragMove();
-            }
-        }
-
-        private void CloseWindow(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
-        private async void Scan_Click(object sender, RoutedEventArgs e)
-        {
-            await ScanAsync();
-        }
-
-        private async void GetParamsButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is string deviceId)
-            {
-                var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-                if (device != null)
+                var existing = Devices.FirstOrDefault(d => d.Id == id);
+                if (existing != null)
                 {
-                    // Запрашиваем информацию об устройстве
-                    await RequestDeviceInfoAsync(device);
-
-                    // Обновляем трей
-                    //(App.Current as App)?.UpdateTrayStatus(true, device.Name, device.BatteryLevel);
-                }
-            }
-        }
-
-        public Boolean IsConected()
-        {
-            var connectedDevice = Devices.FirstOrDefault(d => d.IsConnected ||
-                d.IsConnecting);
-
-            return connectedDevice != null;
-        }
-
-        public async Task ScanAsync()
-        {
-            try
-            {
-                IsScanning = true;
-                foreach (var d in Devices)
-                {
-                    d.IsActive = false;
-                }
-
-                // 1. Создаем watcher для рекламных пакетов (рекомендуемый способ для поиска новых устройств)
-                _bleWatcher = new BluetoothLEAdvertisementWatcher
-                {
-                    ScanningMode = BluetoothLEScanningMode.Active // Активный режим = получаем Scan Response
-                };
-
-                // 2. Обработчик получения данных
-                _bleWatcher.Received += (watcher, btAdv) =>
-                {
-                    // btAdv.Advertisement.LocalName - имя устройства из рекламного пакета
-                    // btAdv.BluetoothAddress - адрес устройства
-                    // btAdv.RawSignalStrengthInDBm - уровень сигнала
-
-                    // Генерируем временный ID, так как у нас еще нет объекта BluetoothLEDevice
-                    string deviceId = btAdv.BluetoothAddress.ToString();
-                    if (IsPrinter(btAdv.Advertisement.LocalName))
-                    {
-                        var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-                        if (device != null)
-                        {
-                            device.IsActive = true;
-                            if (device.IsDisconnecting)
-                            {
-                                device.IsConnected = false;
-                                device.Status = "Не подключен";
-                                device.ButtonText = "Подключить";
-                            }
-                        }
-                    }
-
-                    Dispatcher.Invoke(() =>
-                    {
-                        if (!string.IsNullOrEmpty(btAdv.Advertisement.LocalName) &&
-                            !Devices.Any(d => d.Id == deviceId) &&
-                            IsPrinter(btAdv.Advertisement.LocalName))
-                        {
-                            Devices.Add(new DeviceItem
-                            {
-                                Id = deviceId,
-                                Name = btAdv.Advertisement.LocalName,
-                                Status = "Не подключено",
-                                ButtonText = "Подключить",
-                                IsActive = true
-                            });
-                        }
-                    });
-                };
-
-                // 3. Запускаем сканирование
-                _bleWatcher?.Start();
-                // Сканируем 5 секунд
-                await Task.Delay(5000);
-                foreach (var d in Devices)
-                {
-                    if (!d.IsActive && !d.IsConnected)
-                    {
-                        Devices.Remove(d);
-                    }
-                }
-                StopScanning();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Ошибка при скане: {ex.Message}");
-            }
-        }
-
-        private void StopScanning()
-        {
-            _bleWatcher?.Stop();
-            _bleWatcher = null;
-            IsScanning = false;
-        }
-
-        private bool IsPrinter(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return false;
-
-            // Расширенный список префиксов для принтеров Marklife
-            var prefixes = new[] { "P11", "P12", "P15", "P7", "X2", "S2", "T3", "D1", "L50", "L80", "Marklife", "ML" };
-            return prefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private async void DeviceCnnectButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is string deviceId)
-            {
-                var device = Devices.FirstOrDefault(d => d.Id == deviceId);
-                if (device != null)
-                {
-                    if (device.IsConnected)
-                    {
-                        await DisconnectDeviceAsync(device);
-                    }
-                    else
-                    {
-                        await ConnectDeviceAsync(device);
-                    }
-                }
-            }
-        }
-
-        private async Task ConnectDeviceAsync(DeviceItem device)
-        {
-            try
-            {
-                device.Status = "Подключение...";
-                device.ButtonText = "Подключение...";
-                device.IsConnecting = true;
-
-                // Получаем BluetoothLEDevice по адресу
-                var address = ulong.Parse(device.Id);
-                _connectedDevice = await BluetoothLEDevice.FromBluetoothAddressAsync(address);
-
-                if (_connectedDevice == null)
-                {
-                    device.Status = "Устройство не найдено";
-                    device.ButtonText = "Подключить";
+                    existing.IsActive = true;
                     return;
                 }
 
-                // Получаем все GATT сервисы
-                var servicesResult = await _connectedDevice.GetGattServicesAsync();
-                if (servicesResult.Status != GattCommunicationStatus.Success)
-                {
-                    device.Status = "Ошибка получения сервисов";
-                    device.ButtonText = "Подключить";
-                    _connectedDevice?.Dispose();
-                    _connectedDevice = null;
-                    return;
-                }
+                // Восстанавливаем AutoReconnect из настроек для этого устройства
+                var s = MarklifeWin.Properties.Settings.Default;
+                bool autoReconnect = s.AutoReconnect && s.LastDeviceAddress == id;
 
-                // Ищем сервис принтера (обычно FF00)
-                foreach (var service in servicesResult.Services)
+                Devices.Add(new DeviceItem
                 {
-                    if (service.Uuid.ToString().ToLower().StartsWith("0000ff00"))
-                    {
-                        // Получаем характеристики сервиса
-                        var characteristicsResult = await service.GetCharacteristicsAsync();
-                        if (characteristicsResult.Status == GattCommunicationStatus.Success)
-                        {
-                            foreach (var characteristic in characteristicsResult.Characteristics)
-                            {
-                                // Ищем характеристику для записи (обычно FF02)
-                                if (characteristic.Uuid.ToString().ToLower().StartsWith("0000ff02"))
-                                {
-                                    _writeCharacteristic = characteristic;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-
-                if (_writeCharacteristic == null)
-                {
-                    device.Status = "Сервис печати не найден";
-                    device.ButtonText = "Подключить";
-                    _connectedDevice?.Dispose();
-                    _connectedDevice = null;
-                    return;
-                }
-
-                device.IsConnected = true;
-                device.Status = "Подключен";
-                device.ButtonText = "Отключить";
-                device.HasParams = Visibility.Visible;
-            }
-            catch (Exception ex)
-            {
-                device.Status = $"Ошибка: {ex.Message}";
-                device.ButtonText = "Подключить";
-                _connectedDevice?.Dispose();
-                _connectedDevice = null;
-            }
+                    Id            = id,
+                    Name          = name,
+                    Status        = "Не подключен",
+                    ButtonText    = "Подключить",
+                    IsActive      = true,
+                    AutoReconnect = autoReconnect
+                });
+            });
         }
 
-        private async Task DisconnectDeviceAsync(DeviceItem device)
+        private void OnConnectionStateChanged(object? sender, bool connected)
         {
-            device.Status = "Отключение...";
-            device.ButtonText = "Отключение...";
-
-            // Безопасно отключаем уведомления, если характеристика поддерживает
-            if (_writeCharacteristic != null)
+            Dispatcher.Invoke(() =>
             {
-                try
-                {
-                    var properties = _writeCharacteristic.CharacteristicProperties;
+                var device = Devices.FirstOrDefault(d => d.IsConnected || d.IsConnecting);
+                if (device == null) device = Devices.FirstOrDefault(d => d.Id == _bt.LastDeviceId);
 
-                    // Проверяем, поддерживает ли характеристика уведомления
-                    if (properties.HasFlag(GattCharacteristicProperties.Notify) ||
-                        properties.HasFlag(GattCharacteristicProperties.Indicate))
+                // Если устройство не в списке (автоподключение без сканирования) — добавляем
+                if (device == null && connected && _bt.LastDeviceId != null)
+                {
+                    device = new DeviceItem
                     {
-                        var status = await _writeCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
-                            GattClientCharacteristicConfigurationDescriptorValue.None);
-
-                        if (status != GattCommunicationStatus.Success)
-                        {
-                            Debug.WriteLine($"Не удалось отключить уведомления: {status}");
-                        }
-                    }
+                        Id         = _bt.LastDeviceId,
+                        Name       = _bt.ConnectedDeviceName ?? "Marklife X2",
+                        Status     = "Подключен",
+                        ButtonText = "Отключить",
+                        IsActive   = true
+                    };
+                    Devices.Add(device);
                 }
-                catch (Exception ex)
+
+                if (connected)
                 {
-                    // Игнорируем ошибки при отключении уведомлений
-                    Debug.WriteLine($"Ошибка при отключении уведомлений: {ex.Message}");
-                }
-                finally
-                {
-                    _writeCharacteristic = null;
-                }
-            }
-
-            try
-            {
-                var services = await _connectedDevice?.GetGattServicesAsync();
-                foreach (var service in services.Services)
-                {
-                    service?.Dispose();
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Ошибка при освобождении сервисов: {ex.Message}");
-            }
-
-            try
-            {
-                _connectedDevice?.Dispose();
-            }
-            catch { }
-            finally
-            {
-                _connectedDevice = null;
-                _writeCharacteristic = null;
-
-                device.IsDisconnecting = true;
-                //device.Status = "Не подключен";
-                //device.ButtonText = "Подключить";
-                await ScanAsync();
-                device.HasParams = Visibility.Collapsed;
-
-                (App.Current as App)?.UpdateTrayStatus(false);
-            }
-        }
-
-        private async Task RequestDeviceInfoAsync(DeviceItem device)
-        {
-            if (_writeCharacteristic == null) return;
-
-            try
-            {
-                // Запрос версии прошивки
-                //await SendCommandAsync(new byte[] { 0x10, 0xFF, 0x20, 0xF1 });
-                // Запрос серийного номера
-                //await SendCommandAsync(new byte[] { 0x10, 0xFF, 0x20, 0xF2 });
-                // Запрос уровня батареи
-                await SendCommandAsync(new byte[] { 0x10, 0xFF, 0x50, 0xF1 });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка запроса информации: {ex.Message}");
-            }
-        }
-
-        private async Task SendCommandAsync(byte[] command)
-        {
-            if (_writeCharacteristic == null) return;
-
-            try
-            {
-                using var writer = new DataWriter();
-                writer.WriteBytes(command);
-                await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка отправки команды: {ex.Message}");
-            }
-        }
-
-        private void StartPipeServer()
-        {
-            _pipeTask = Task.Run(async () =>
-            {
-                while (true)
-                {
-                    try
+                    if (device != null)
                     {
-                        _pipeServer = new NamedPipeServerStream(_pipeName, PipeDirection.InOut);
-                        await _pipeServer.WaitForConnectionAsync();
-
-                        using var reader = new StreamReader(_pipeServer);
-                        using var writer = new StreamWriter(_pipeServer);
-
-                        string? line = await reader.ReadLineAsync();
-                        if (line != null)
-                        {
-                            await ProcessCommandAsync(line, writer);
-                        }
+                        device.IsConnected = true;
+                        device.Status      = "Подключен";
+                        device.ButtonText  = "Отключить";
+                        device.HasParams   = Visibility.Visible;
                     }
-                    catch (Exception ex)
+                    (App.Current as App)?.UpdateTrayStatus(true, _bt.ConnectedDeviceName ?? "", 0);
+                }
+                else
+                {
+                    if (device != null)
                     {
-                        Console.WriteLine($"Pipe error: {ex.Message}");
+                        device.IsConnected = false;
+                        device.Status      = "Не подключен";
+                        device.ButtonText  = "Подключить";
+                        device.HasParams   = Visibility.Collapsed;
                     }
-                    finally
-                    {
-                        _pipeServer?.Dispose();
-                    }
+                    (App.Current as App)?.UpdateTrayStatus(false);
                 }
             });
         }
 
-        private async Task ProcessCommandAsync(string command, StreamWriter writer)
+        private void OnStatusChanged(object? sender, string status)
         {
-            if (command.StartsWith("PRINT|"))
+            Debug.WriteLine($"[UI] Status: {status}");
+        }
+
+        private void OnBatteryLevelChanged(object? sender, int level)
+        {
+            Dispatcher.Invoke(() =>
             {
-                var parts = command.Substring(6).Split('|');
-                if (parts.Length >= 7)
-                {
-                    var filePath = parts[6];
-                    await PrintFileAsync(filePath);
-                }
-                await writer.WriteLineAsync("OK");
-            }
-            else if (command == "STATUS")
+                UpdateDevice(d => d.BatteryLevel = level);
+                (App.Current as App)?.UpdateTrayBattery(level);
+            });
+        }
+
+        private void OnShutdownTimeReceived(object? sender, int? minutes)
+        {
+            Dispatcher.Invoke(() =>
             {
-                var status = _connectedDevice != null ? "connected" : "disconnected";
-                await writer.WriteLineAsync($"STATUS|{status}");
+                var device = Devices.FirstOrDefault(d => d.IsConnected);
+                if (device == null) return;
+                device.ShutdownMinutes = minutes ?? 0;
+            });
+        }
+
+        private void UpdateDevice(Action<DeviceItem> action)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                var device = Devices.FirstOrDefault(d => d.IsConnected);
+                if (device != null) action(device);
+            });
+        }
+
+        // ── UI Handlers ──────────────────────────────────────────────────────
+
+        private void DragWindow(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+        }
+
+        private void CloseWindow(object sender, RoutedEventArgs e) => Hide();
+
+        private async void Scan_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsScanning) return;
+            await RunScanAsync();
+        }
+
+        public async Task RunScanAsync()
+        {
+            IsScanning = true;
+            // Помечаем неподключённые как неактивные — если не найдутся, удалим
+            foreach (var d in Devices.Where(d => !d.IsConnected && d.IsConnectEnabled).ToList())
+                d.IsActive = false;
+
+            await _bt.ScanAsync(8000);
+
+            // Удаляем только те что не нашлись, не подключены и кнопка не заблокирована
+            foreach (var d in Devices.Where(d => !d.IsActive && !d.IsConnected && d.IsConnectEnabled).ToList())
+                Devices.Remove(d);
+
+            IsScanning = false;
+        }
+
+        private async void DeviceCnnectButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string id)
+            {
+                var device = Devices.FirstOrDefault(d => d.Id == id);
+                if (device == null) return;
+
+                if (device.IsConnected)
+                    await DisconnectAsync(device);
+                else
+                    await ConnectAsync(device);
             }
         }
 
-        private async Task PrintFileAsync(string filePath)
+        private async Task ConnectAsync(DeviceItem device)
         {
-            if (_connectedDevice == null || _writeCharacteristic == null) return;
+            device.Status     = "Подключение...";
+            device.ButtonText = "Подключение...";
+            device.IsConnecting = true;
+            await _bt.ConnectAsync(device.Id);
+        }
 
-            var data = await File.ReadAllBytesAsync(filePath);
+        private async Task DisconnectAsync(DeviceItem device)
+        {
+            // Блокируем кнопку на время отключения
+            device.IsConnectEnabled = false;
+            device.Status     = "Отключение...";
+            device.ButtonText = "Отключение...";
 
+            await _bt.DisconnectAsync();
+
+            // Сбрасываем состояние, но НЕ удаляем из списка
+            device.IsConnected = false;
+            device.HasParams   = Visibility.Collapsed;
+            device.Status      = "Не подключен";
+            device.ButtonText  = "Подключить";
+            device.IsActive    = true; // не удалять при следующем скане
+            device.ShutdownMinutes = -1; // сброс — при следующем подключении снова прочерк
+
+            // Ждём пока принтер снова появится в эфире, потом разблокируем
+            _ = Task.Run(async () =>
+            {
+                await _bt.ScanAsync(10000);
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    // Если устройство всё ещё в списке — разблокируем кнопку
+                    var d = Devices.FirstOrDefault(x => x.Id == device.Id);
+                    if (d != null)
+                    {
+                        d.IsConnectEnabled = true;
+                        d.IsActive = true;
+                    }
+                });
+            });
+        }
+
+        private async void GetParamsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string id)
+            {
+                var device = Devices.FirstOrDefault(d => d.Id == id);
+                if (device == null || !device.IsConnected) return;
+                device.IsParamsButton = false;
+                device.ParamsButtonText = "Загрузка...";
+                await _bt.RequestAllInfoAsync();
+                device.IsParamsButton = true;
+                device.ParamsButtonText = "Обновить";
+            }
+        }
+
+        private async void ShutdownCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is not ComboBox combo) return;
+            if (combo.Tag is not DeviceItem device) return;
+            if (!device.IsConnected) return;
+
+            int[] minuteValues = { 5, 10, 15, 30, 60 };
+            int idx = combo.SelectedIndex;
+            if (idx < 0 || idx >= minuteValues.Length) return;
+
+            int minutes = minuteValues[idx];
+            if (device.ShutdownMinutes == minutes) return;
+
+            // Блокируем кнопку и комбобокс
+            device.IsParamsButton = false;
+            device.ParamsButtonText = "Применение...";
             try
             {
-                // Разбиваем на пакеты по 20 байт
-                int chunkSize = 20;
-                for (int i = 0; i < data.Length; i += chunkSize)
-                {
-                    int len = Math.Min(chunkSize, data.Length - i);
-                    byte[] chunk = new byte[len];
-                    Array.Copy(data, i, chunk, 0, len);
-
-                    using var writer = new DataWriter();
-                    writer.WriteBytes(chunk);
-                    await _writeCharacteristic.WriteValueAsync(writer.DetachBuffer());
-                }
+                await _bt.SetShutdownTimeAsync(minutes);
+                device.ShutdownMinutes = minutes;
             }
-            catch (Exception ex)
+            finally
             {
-                Console.WriteLine($"Ошибка печати: {ex.Message}");
+                device.IsParamsButton = true;
+                device.ParamsButtonText = "Обновить";
             }
         }
+
+        private void AutoReconnectToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox cb && cb.Tag is DeviceItem device)
+            {
+                _bt.AutoReconnect = device.AutoReconnect;
+                _bt.LastDeviceId  = device.AutoReconnect ? device.Id : null;
+
+                // Сохраняем в настройки
+                var s = MarklifeWin.Properties.Settings.Default;
+                s.AutoReconnect      = device.AutoReconnect;
+                s.LastDeviceAddress  = device.AutoReconnect ? device.Id : "";
+                s.Save();
+                Debug.WriteLine($"[UI] AutoReconnect saved: {device.AutoReconnect}, id={device.Id}");
+            }
+        }
+
+        public bool IsConnected() => Devices.Any(d => d.IsConnected || d.IsConnecting);
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            // Скрываем окно вместо закрытия
             e.Cancel = true;
             Hide();
-            base.OnClosing(e);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -472,141 +318,106 @@ namespace MarklifeWin
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // DeviceItem
+    // ════════════════════════════════════════════════════════════════════════
     public class DeviceItem : INotifyPropertyChanged
     {
         private string _id = "";
-        public string Id
-        {
-            get => _id;
-            set { _id = value; OnPropertyChanged(); }
-        }
+        public string Id { get => _id; set { _id = value; OnPropertyChanged(); } }
 
         private string _name = "";
-        public string Name
-        {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
-        }
+        public string Name { get => _name; set { _name = value; OnPropertyChanged(); } }
 
         private string _status = "";
-        public string Status
-        {
-            get => _status;
-            set { _status = value; OnPropertyChanged(); }
-        }
+        public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
 
         private string _buttonText = "Подключить";
-        public string ButtonText
-        {
-            get => _buttonText;
-            set { _buttonText = value; OnPropertyChanged(); }
-        }
+        public string ButtonText { get => _buttonText; set { _buttonText = value; OnPropertyChanged(); } }
 
-        private string _paramsButtonText = "Обновить информацию";
-        public string ParamsButtonText
-        {
-            get => _paramsButtonText;
-            set { _paramsButtonText = value; OnPropertyChanged(); }
-        }
+        private string _paramsButtonText = "Обновить";
+        public string ParamsButtonText { get => _paramsButtonText; set { _paramsButtonText = value; OnPropertyChanged(); } }
 
         private bool _isParamsButton = true;
-
-        public bool IsParamsButton
-        {
-            get => _isParamsButton;
-            set { _isParamsButton = value; OnPropertyChanged(); }
-        }
+        public bool IsParamsButton { get => _isParamsButton; set { _isParamsButton = value; OnPropertyChanged(); } }
 
         private Visibility _hasParams = Visibility.Collapsed;
-        public Visibility HasParams
-        {
-            get => _hasParams;
-            set { _hasParams = value; OnPropertyChanged(); }
-        }
+        public Visibility HasParams { get => _hasParams; set { _hasParams = value; OnPropertyChanged(); } }
 
         private bool _isActive;
-        public bool IsActive
-        {
-            get => _isActive;
-            set { _isActive = value; OnPropertyChanged(); }
-        }
+        public bool IsActive { get => _isActive; set { _isActive = value; OnPropertyChanged(); } }
 
         private bool _isConnectEnabled = true;
-
-        public bool IsConnectEnabled
-        {
-            get => _isConnectEnabled;
-            set { _isConnectEnabled = value; OnPropertyChanged(); }
-        }
-        private bool _isDisconnecting;
-        public bool IsDisconnecting
-        {
-            get => _isDisconnecting;
-            set { _isDisconnecting = value; IsConnectEnabled = false; OnPropertyChanged(); }
-        }
+        public bool IsConnectEnabled { get => _isConnectEnabled; set { _isConnectEnabled = value; OnPropertyChanged(); } }
 
         private bool _isConnecting;
         public bool IsConnecting
         {
             get => _isConnecting;
-            set { _isConnecting = value; IsConnectEnabled = false; OnPropertyChanged(); }
+            set { _isConnecting = value; IsConnectEnabled = !value; OnPropertyChanged(); }
         }
 
         private bool _isConnected;
         public bool IsConnected
         {
             get => _isConnected;
-            set { _isConnected = value; IsConnecting = false; IsDisconnecting = false; IsConnectEnabled = true; OnPropertyChanged(); }
-        }
-
-        private string _firmware = "";
-        public string Firmware
-        {
-            get => _firmware;
-            set { _firmware = value; OnPropertyChanged(); }
+            set { _isConnected = value; IsConnecting = false; IsConnectEnabled = true; OnPropertyChanged(); }
         }
 
         private int _batteryLevel;
         public int BatteryLevel
         {
             get => _batteryLevel;
-            set { _batteryLevel = value; OnPropertyChanged(); Battery = $"Батарея: {value}%"; }
+            set { _batteryLevel = value; Battery = $"{value}%"; OnPropertyChanged(); }
         }
 
         private string _battery = "-";
-        public string Battery
-        {
-            get => _battery;
-            set { _battery = value; OnPropertyChanged(); }
-        }
+        public string Battery { get => _battery; set { _battery = value; OnPropertyChanged(); } }
 
         private string _paper = "-";
-        public string Paper
-        {
-            get => _paper;
-            set { _paper = value; OnPropertyChanged(); }
-        }
+        public string Paper { get => _paper; set { _paper = value; OnPropertyChanged(); } }
 
         private string _serial = "-";
-        public string Serial
-        {
-            get => _serial;
-            set { _serial = value; OnPropertyChanged(); }
-        }
+        public string Serial { get => _serial; set { _serial = value; OnPropertyChanged(); } }
 
         private string _mac = "-";
-        public string Mac
+        public string Mac { get => _mac; set { _mac = value; OnPropertyChanged(); } }
+
+        private string _firmware = "-";
+        public string Firmware { get => _firmware; set { _firmware = value; OnPropertyChanged(); } }
+
+        // Shutdown time in minutes; -1 = unknown (show dash)
+        private int _shutdownMinutes = -1;
+        public int ShutdownMinutes
         {
-            get => _mac;
-            set { _mac = value; OnPropertyChanged(); }
+            get => _shutdownMinutes;
+            set
+            {
+                _shutdownMinutes = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShutdownSelectedIndex));
+                OnPropertyChanged(nameof(ShutdownKnown));
+                OnPropertyChanged(nameof(ShutdownUnknown));
+                OnPropertyChanged(nameof(ShutdownDisplayText));
+            }
         }
 
-        private string _shutdown = "-";
-        public string Shutdown
+        // true когда значение получено от принтера
+        public bool ShutdownKnown   => _shutdownMinutes > 0;
+        public bool ShutdownUnknown => _shutdownMinutes <= 0;
+
+        // Maps minutes -> ComboBox index: 0=5min,1=10,2=15,3=30,4=60
+        // Returns -1 if value not in list (will show raw value as text instead)
+        public int ShutdownSelectedIndex
         {
-            get => _shutdown;
-            set { _shutdown = value; OnPropertyChanged(); }
+            get => _shutdownMinutes switch { 5 => 0, 10 => 1, 15 => 2, 30 => 3, 60 => 4, _ => -1 };
         }
+
+        // Текст для отображения если значение не в списке
+        public string ShutdownDisplayText => _shutdownMinutes > 0 ? $"{_shutdownMinutes} мин" : "—";
+
+        private bool _autoReconnect;
+        public bool AutoReconnect { get => _autoReconnect; set { _autoReconnect = value; OnPropertyChanged(); } }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)

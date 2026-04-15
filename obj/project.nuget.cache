@@ -1,22 +1,39 @@
 {
   "version": 2,
-  "dgSpecHash": "8y1srPK6DWs=",
+  "dgSpecHash": "uPmLi/ZYZtU=",
   "success": true,
   "projectFilePath": "C:\\Users\\chai9\\Downloads\\MarklifeX2Win-main\\MarklifeX2Win-main\\MarklifeWin.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\chai9\\.nuget\\packages\\hardcodet.notifyicon.wpf\\1.1.0\\hardcodet.notifyicon.wpf.1.1.0.nupkg.sha512",
+    "C:\\Users\\chai9\\.nuget\\packages\\pdfiumviewer\\2.13.0\\pdfiumviewer.2.13.0.nupkg.sha512",
+    "C:\\Users\\chai9\\.nuget\\packages\\pdfiumviewer.native.x86_64.v8-xfa\\2018.4.8.256\\pdfiumviewer.native.x86_64.v8-xfa.2018.4.8.256.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\runtime.linux-arm.runtime.native.system.io.ports\\8.0.0\\runtime.linux-arm.runtime.native.system.io.ports.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\runtime.linux-arm64.runtime.native.system.io.ports\\8.0.0\\runtime.linux-arm64.runtime.native.system.io.ports.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\runtime.linux-x64.runtime.native.system.io.ports\\8.0.0\\runtime.linux-x64.runtime.native.system.io.ports.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\runtime.native.system.io.ports\\8.0.0\\runtime.native.system.io.ports.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\runtime.osx-arm64.runtime.native.system.io.ports\\8.0.0\\runtime.osx-arm64.runtime.native.system.io.ports.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\runtime.osx-x64.runtime.native.system.io.ports\\8.0.0\\runtime.osx-x64.runtime.native.system.io.ports.8.0.0.nupkg.sha512",
+    "C:\\Users\\chai9\\.nuget\\packages\\system.codedom\\8.0.0\\system.codedom.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\system.io.ports\\8.0.0\\system.io.ports.8.0.0.nupkg.sha512",
+    "C:\\Users\\chai9\\.nuget\\packages\\system.management\\8.0.0\\system.management.8.0.0.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.25\\microsoft.netcore.app.ref.8.0.25.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.25\\microsoft.windowsdesktop.app.ref.8.0.25.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.25\\microsoft.aspnetcore.app.ref.8.0.25.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.25\\microsoft.netcore.app.host.win-x64.8.0.25.nupkg.sha512",
     "C:\\Users\\chai9\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.19041.57\\microsoft.windows.sdk.net.ref.10.0.19041.57.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "message": "Package 'PdfiumViewer 2.13.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows10.0.19041'. This package may not be fully compatible with your project.",
+      "projectPath": "C:\\Users\\chai9\\Downloads\\MarklifeX2Win-main\\MarklifeX2Win-main\\MarklifeWin.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\chai9\\Downloads\\MarklifeX2Win-main\\MarklifeX2Win-main\\MarklifeWin.csproj",
+      "libraryId": "PdfiumViewer",
+      "targetGraphs": [
+        "net8.0-windows10.0.19041.0"
+      ]
+    }
+  ]
 }

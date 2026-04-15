@@ -48,7 +48,19 @@
               "target": "Package",
               "version": "[1.1.0, )"
             },
+            "PdfiumViewer": {
+              "target": "Package",
+              "version": "[2.13.0, )"
+            },
+            "PdfiumViewer.Native.x86_64.v8-xfa": {
+              "target": "Package",
+              "version": "[2018.4.8.256, )"
+            },
             "System.IO.Ports": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "System.Management": {
               "target": "Package",
               "version": "[8.0.0, )"
             }

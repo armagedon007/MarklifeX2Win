@@ -7,6 +7,8 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("pdfium.dll")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("resources/main.ico")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("resources/tray.ico")]
 
 

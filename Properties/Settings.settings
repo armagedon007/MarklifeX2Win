@@ -4,11 +4,14 @@
     <Profile Name="(Default)" />
   </Profiles>
   <Settings>
-    <Setting Name="AutoConnect" Type="System.Boolean" Scope="User">
+    <Setting Name="AutoReconnect" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="LastDeviceId" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
+    <Setting Name="LastDeviceAddress" Type="System.String" Scope="User">
+      <Value Profile="(Default)"></Value>
+    </Setting>
+    <Setting Name="LastConnectedAddress" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
     </Setting>
     <Setting Name="AutoShutdownMinutes" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">30</Value>

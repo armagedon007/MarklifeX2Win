@@ -1,6 +1,6 @@
 # MarklifeWin
 
-Windows приложение для печати через Bluetooth на принтеры Marklife.
+Windows приложение для печати через Bluetooth на принтеры Marklife X2
 
 ## Требования
 
@@ -16,6 +16,17 @@ dotnet build
 dotnet run
 ```
 
+## Установка принтера в систему (запустить от имени администратора)
+
+```bash
+scripts\setup-printer.bat
+```
+
+## Удаление принтера
+```bash
+scripts\remove-printer.bat
+```
+
 ## Структура
 
 - `MarklifeWin.csproj` - проект
@@ -24,3 +35,6 @@ dotnet run
 - `Bluetooth/` - Bluetooth менеджер
 - `Print/` - движок печати
 - `NamedPipe/` - NamedPipe сервер для CUPS
+
+## Лицензия
+MIT

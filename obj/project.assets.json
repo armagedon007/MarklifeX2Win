@@ -18,6 +18,30 @@
           "Microsoft.WindowsDesktop.App"
         ]
       },
+      "PdfiumViewer/2.13.0": {
+        "type": "package",
+        "compile": {
+          "lib/net20/PdfiumViewer.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net20/PdfiumViewer.dll": {
+            "related": ".xml"
+          }
+        },
+        "resource": {
+          "lib/net20/nl/PdfiumViewer.resources.dll": {
+            "locale": "nl"
+          }
+        }
+      },
+      "PdfiumViewer.Native.x86_64.v8-xfa/2018.4.8.256": {
+        "type": "package",
+        "build": {
+          "Build/PdfiumViewer.Native.x86_64.v8-xfa.props": {}
+        }
+      },
       "runtime.linux-arm.runtime.native.System.IO.Ports/8.0.0": {
         "type": "package",
         "runtimeTargets": {
@@ -73,6 +97,22 @@
           }
         }
       },
+      "System.CodeDom/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
       "System.IO.Ports/8.0.0": {
         "type": "package",
         "dependencies": {
@@ -97,6 +137,31 @@
             "rid": "unix"
           },
           "runtimes/win/lib/net8.0/System.IO.Ports.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.Management/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net8.0/System.Management.dll": {
             "assetType": "runtime",
             "rid": "win"
           }
@@ -126,6 +191,35 @@
         "lib/net5.0-windows7.0/Hardcodet.NotifyIcon.Wpf.xml",
         "lib/netcoreapp3.1/Hardcodet.NotifyIcon.Wpf.dll",
         "lib/netcoreapp3.1/Hardcodet.NotifyIcon.Wpf.xml"
+      ]
+    },
+    "PdfiumViewer/2.13.0": {
+      "sha512": "Nw4owBmJzDVXoMRjCnqPbET07CPOawwhcNjt+PyRaSxONN9bsFF+cm9kcMsDLEAEaxsiDJo5jls8bCQjvjidkA==",
+      "type": "package",
+      "path": "pdfiumviewer/2.13.0",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Tools/Install.ps1",
+        "lib/net20/PdfiumViewer.dll",
+        "lib/net20/PdfiumViewer.xml",
+        "lib/net20/nl/PdfiumViewer.resources.dll",
+        "pdfiumviewer.2.13.0.nupkg.sha512",
+        "pdfiumviewer.nuspec"
+      ]
+    },
+    "PdfiumViewer.Native.x86_64.v8-xfa/2018.4.8.256": {
+      "sha512": "0RQwmLMPKOHBRqRK+NPMR2H5EQ4KlYO+LnT3Y2lByVUa5/JTPCMswL46JEXX+/MAfJtCpS2PzJvy6QzpH2nuIw==",
+      "type": "package",
+      "path": "pdfiumviewer.native.x86_64.v8-xfa/2018.4.8.256",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Build/PdfiumViewer.Native.x86_64.v8-xfa.props",
+        "Build/x64/pdfium.dll",
+        "pdfiumviewer.native.x86_64.v8-xfa.2018.4.8.256.nupkg.sha512",
+        "pdfiumviewer.native.x86_64.v8-xfa.nuspec"
       ]
     },
     "runtime.linux-arm.runtime.native.System.IO.Ports/8.0.0": {
@@ -223,6 +317,35 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "System.CodeDom/8.0.0": {
+      "sha512": "WTlRjL6KWIMr/pAaq3rYqh0TJlzpouaQ/W1eelssHgtlwHAH25jXTkUphTYx9HaIIf7XA6qs/0+YhtLEQRkJ+Q==",
+      "type": "package",
+      "path": "system.codedom/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.CodeDom.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.CodeDom.targets",
+        "lib/net462/System.CodeDom.dll",
+        "lib/net462/System.CodeDom.xml",
+        "lib/net6.0/System.CodeDom.dll",
+        "lib/net6.0/System.CodeDom.xml",
+        "lib/net7.0/System.CodeDom.dll",
+        "lib/net7.0/System.CodeDom.xml",
+        "lib/net8.0/System.CodeDom.dll",
+        "lib/net8.0/System.CodeDom.xml",
+        "lib/netstandard2.0/System.CodeDom.dll",
+        "lib/netstandard2.0/System.CodeDom.xml",
+        "system.codedom.8.0.0.nupkg.sha512",
+        "system.codedom.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
     "System.IO.Ports/8.0.0": {
       "sha512": "MaiPbx2/QXZc62gm/DrajRrGPG1lU4m08GWMoWiymPYM+ba4kfACp2PbiYpqJ4QiFGhHD00zX3RoVDTucjWe9g==",
       "type": "package",
@@ -264,12 +387,48 @@
         "system.io.ports.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "System.Management/8.0.0": {
+      "sha512": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA==",
+      "type": "package",
+      "path": "system.management/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Management.targets",
+        "lib/net462/_._",
+        "lib/net6.0/System.Management.dll",
+        "lib/net6.0/System.Management.xml",
+        "lib/net7.0/System.Management.dll",
+        "lib/net7.0/System.Management.xml",
+        "lib/net8.0/System.Management.dll",
+        "lib/net8.0/System.Management.xml",
+        "lib/netstandard2.0/System.Management.dll",
+        "lib/netstandard2.0/System.Management.xml",
+        "runtimes/win/lib/net6.0/System.Management.dll",
+        "runtimes/win/lib/net6.0/System.Management.xml",
+        "runtimes/win/lib/net7.0/System.Management.dll",
+        "runtimes/win/lib/net7.0/System.Management.xml",
+        "runtimes/win/lib/net8.0/System.Management.dll",
+        "runtimes/win/lib/net8.0/System.Management.xml",
+        "system.management.8.0.0.nupkg.sha512",
+        "system.management.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
     }
   },
   "projectFileDependencyGroups": {
     "net8.0-windows10.0.19041": [
       "Hardcodet.NotifyIcon.Wpf >= 1.1.0",
-      "System.IO.Ports >= 8.0.0"
+      "PdfiumViewer >= 2.13.0",
+      "PdfiumViewer.Native.x86_64.v8-xfa >= 2018.4.8.256",
+      "System.IO.Ports >= 8.0.0",
+      "System.Management >= 8.0.0"
     ]
   },
   "packageFolders": {
@@ -319,7 +478,19 @@
             "target": "Package",
             "version": "[1.1.0, )"
           },
+          "PdfiumViewer": {
+            "target": "Package",
+            "version": "[2.13.0, )"
+          },
+          "PdfiumViewer.Native.x86_64.v8-xfa": {
+            "target": "Package",
+            "version": "[2018.4.8.256, )"
+          },
           "System.IO.Ports": {
+            "target": "Package",
+            "version": "[8.0.0, )"
+          },
+          "System.Management": {
             "target": "Package",
             "version": "[8.0.0, )"
           }
@@ -371,5 +542,17 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'PdfiumViewer 2.13.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows10.0.19041'. This package may not be fully compatible with your project.",
+      "libraryId": "PdfiumViewer",
+      "targetGraphs": [
+        "net8.0-windows10.0.19041.0"
+      ]
+    }
+  ]
 }

@@ -1,0 +1,85 @@
+# Build outputs
+old/
+/bin/
+/obj/
+/publish/
+*.exe
+*.dll
+*.pdb
+*.cache
+
+# User settings
+*.user
+*.suo
+*.userprefs
+.vs/
+.idea/
+*.csproj.user
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Temp files
+*.tmp
+*.temp
+*.log
+*.cachefile
+
+# NuGet
+/packages/
+*.nupkg
+packages/
+!packages/repositories.config
+
+# Publish
+*.deploy.cmd
+*.publish.xml
+
+# Debug/Release
+/bin/Debug/
+/bin/Release/
+/obj/Debug/
+/obj/Release/
+
+# Resharper
+_Resharper*/
+*.ReSharper.*
+
+# Backup files
+*~
+*.bak
+
+# Windows image files
+Thumbs.db
+Desktop.ini
+
+# Mac
+.DS_Store
+
+# Test results
+TestResults/
+
+# Local config
+appsettings.Development.json
+appsettings.Local.json
+app.config.local
+web.config.local
+
+# Environment files
+.env
+.env.local
+
+# Certificates
+*.pfx
+*.p12
+*.snk
+
+# Documentation
+docs/_build/
+site/
+
+# FodyWeavers log
+FodyWeavers.xml.bak

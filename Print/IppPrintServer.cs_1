@@ -1,0 +1,287 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using SharpIpp;
+using SharpIpp.Exceptions;
+using SharpIpp.Models.Requests;
+using SharpIpp.Protocol;
+using SharpIpp.Protocol.Models;
+
+namespace MarklifeWin.Print
+{
+    public class IppPrintServer : IDisposable
+    {
+        private readonly PrintEngine _engine;
+        private readonly PrintQueueManager _queue;
+        private WebApplication? _app;
+        private bool _disposed;
+
+        public event EventHandler<string>? StatusChanged;
+        public event EventHandler<string>? PrintJobReceived;
+        public event EventHandler<string>? PrintJobError;
+
+        public IppPrintServer(PrintEngine engine, PrintQueueManager queue)
+        {
+            _engine = engine;
+            _queue = queue;
+        }
+
+        public void Start(int port = 631)
+        {
+            if (_app != null) return;
+
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.ListenAnyIP(port);
+            });
+
+            builder.Services.AddSingleton(_engine);
+            builder.Services.AddSingleton(_queue);
+            builder.Services.AddSingleton(this);
+            builder.Services.AddSingleton<PrintService>();
+
+            _app = builder.Build();
+            var printerName = "X2 Print Label";
+
+            new List<string>
+            {
+                "/",
+                "/ipp",
+                $"/{printerName}",
+                "/ipp/printer",
+                $"/ipp/printer/{printerName}"
+            }.ForEach(path =>
+            {
+                _app.MapGet(path, () => "IPP printer");
+                _app.MapPost(path, async (HttpContext context, PrintService printerService) =>
+                {
+                    context.Response.ContentType = "application/ipp";
+                    await printerService.ProcessRequestAsync(context.Request.Body, context.Response.Body);
+                });
+            });
+
+            /*_app.MapGet("/", () => "IPP Printer");
+            _app.MapGet("/ipp", () => "IPP Printer");
+            _app.MapGet("/ipp/print", () => "IPP Printer");
+            _app.MapPost("/ipp/print", async (HttpContext context, PrintService printService) =>
+            {
+                context.Response.ContentType = "application/ipp";
+                await printService.ProcessRequestAsync(context.Request.Body, context.Response.Body);
+            });*/
+
+            _app.StartAsync();
+            StatusChanged?.Invoke(this, $"IPP Server started on port {port}");
+            Debug.WriteLine($"[IppServer] Listening on port {port}");
+        }
+
+        public void Stop()
+        {
+            _app?.StopAsync();
+            _app = null;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Stop();
+        }
+    }
+
+    public class PrintService(
+            PrintEngine engine,
+            PrintQueueManager queue,
+            IppPrintServer server,
+            ISharpIppServer sharpIppServer,
+            IHttpContextAccessor httpContextAccessor
+    )
+    {
+
+        public async Task ProcessRequestAsync(Stream inputStream, Stream outputStream)
+        {
+            try
+            {
+                IIppRequest request = await sharpIppServer.ReceiveRequestAsync(inputStream);
+                Debug.WriteLine(request.ToString());
+                IIppResponse response = await GetResponseAsync(request);
+                IIppResponseMessage rawResponse = await sharpIppServer.CreateRawResponseAsync(response);
+                ImproveRawResponse(request, rawResponse);
+                await sharpIppServer.SendRawResponseAsync(rawResponse, outputStream);
+            }
+            catch (IppRequestException ex)
+            {
+                Debug.WriteLine("[PrintService] IppRequestException ex");
+                /*logger.LogError(ex, "Unable to process request");
+                var response = new IppResponseMessage
+                {
+                    RequestId = ex.RequestMessage.RequestId,
+                    Version = ex.RequestMessage.Version,
+                    StatusCode = ex.StatusCode
+                };
+                response.OperationAttributes.Add([
+                    new IppAttribute(Tag.Charset, JobAttribute.AttributesCharset, "utf-8"),
+                new IppAttribute(Tag.NaturalLanguage, JobAttribute.AttributesNaturalLanguage, "en")]);
+                await sharpIppServer.SendRawResponseAsync(response, outputStream);*/
+            }
+            catch (Exception ex)
+            {
+                //logger.LogError(ex, "Unable to process request");
+                Debug.WriteLine("[PrintService] Exception ex");
+                if (httpContextAccessor.HttpContext != null)
+                    httpContextAccessor.HttpContext.Response.StatusCode = 500;
+            }
+        }
+
+        private async Task<IIppResponse> GetResponseAsync(IIppRequest request)
+        {
+            return request switch
+            {
+                /*CancelJobRequest x => await GetCancelJobResponseAsync(x),
+                CreateJobRequest x => GetCreateJobResponse(x),
+                CUPSGetPrintersRequest x => GetCUPSGetPrintersResponse(x),
+                GetJobAttributesRequest x => GetGetJobAttributesResponse(x),
+                GetJobsRequest x => GetGetJobsResponse(x),
+                GetPrinterAttributesRequest x => GetGetPrinterAttributesResponse(x),
+                HoldJobRequest x => await GetHoldJobResponseAsync(x),
+                PausePrinterRequest x => GetPausePrinterResponse(x),
+                PrintJobRequest x => await GetPrintJobResponseAsync(x),
+                PrintUriRequest x => GetPrintUriResponse(x),
+                PurgeJobsRequest x => await GetPurgeJobsResponseAsync(x),
+                ReleaseJobRequest x => await GetReleaseJobResponseAsync(x),
+                RestartJobRequest x => await GetRestartJobResponseAsync(x),
+                ResumePrinterRequest x => GetResumePrinterResponse(x),
+                SendDocumentRequest x => await GetSendDocumentResponseAsync(x),
+                SendUriRequest x => await GetSendUriResponseAsync(x),
+                ValidateJobRequest x => GetValidateJobResponse(x),*/
+                _ => throw new NotImplementedException()
+            };
+        }
+
+
+
+        private void ImproveRawResponse(IIppRequest request, IIppResponseMessage rawResponse)
+        {
+            switch (request)
+            {
+                case GetPrinterAttributesRequest x:
+                    ImproveGetPrinterAttributesRawResponse(x, rawResponse);
+                    break;
+            }
+        }
+
+        private void ImproveGetPrinterAttributesRawResponse(GetPrinterAttributesRequest request, IIppResponseMessage rawResponse)
+        {
+            return;
+            /*var list = rawResponse.PrinterAttributes.FirstOrDefault();
+            if (list is null)
+                return;
+            bool IsRequired(string attributeName) => !list.Any(x => x.Name.Equals(attributeName))
+                && IsAttributeRequired(request, attributeName);
+
+            if (IsRequired("printer-device-id"))
+                list.Add(new IppAttribute(Tag.TextWithoutLanguage, "printer-device-id", GetPrinterDeviceId()));
+            if (IsRequired("printer-uuid"))
+                list.Add(new IppAttribute(Tag.Uri, "printer-uuid", $"urn:uuid:d178b387-3a93-4d17-a561-007f876c4901"));
+            if (IsRequired("printer-dns-sd-name"))
+                list.Add(new IppAttribute(Tag.NameWithoutLanguage, "printer-dns-sd-name", "X2 Label Print [231076]"));
+            if (IsRequired("printer-make-and-model"))
+                list.Add(new IppAttribute(Tag.TextWithoutLanguage, "printer-make-and-model", "X2 Label Print"));
+            if (IsRequired("printer-firmware-name"))
+                list.Add(new IppAttribute(Tag.NameWithoutLanguage, "printer-firmware-name", "SIN22183498"));
+            if (IsRequired("printer-firmware-string-version"))
+                list.Add(new IppAttribute(Tag.TextWithoutLanguage, "printer-firmware-string-version", "SIN22183498"));*/
+        }
+
+        private static string GetPrinterDeviceId()
+        {
+            return new StringBuilder()
+                .Append("MFG:danielklecha;") //Manufacturer
+                .Append("MDL:SharpIppNext1;") //Model
+                .Append("CMD:Automatic,JPEG;") //Command Set
+                .Append("CLS:PRINTER") //Class
+                .Append("DES:SIN1;") //Designator or Description
+                .Append("CID:SharpIppNext_1;") //Compatible ID
+                .Append("LEDMDIS:USB#FF#CC#00,USB#07#01#02,USB#FF#04#01;") //Legacy Device ID String
+                .Append("SN:SIN279BJ23J07PX;") //Serial Number
+                .Append("S:038000C480a00001002c240005ac1400032;") //Status
+                .Append("Z:05000008000009,12000,17000000000000,181;") //Vendor-Specific
+                .ToString();
+        }
+
+        private static bool IsAttributeRequired(GetPrinterAttributesRequest request, string attributeName)
+        {
+            return false;/* request.OperationAttributes is null
+                    || request.OperationAttributes.RequestedAttributes is null
+                    || request.OperationAttributes.RequestedAttributes.Length == 0
+                    || request.OperationAttributes.RequestedAttributes.All(x => x == string.Empty)
+                    || request.OperationAttributes.RequestedAttributes.Any(x => x.Equals("all", StringComparison.InvariantCultureIgnoreCase))
+                    || request.OperationAttributes.RequestedAttributes.Contains(attributeName);*/
+        }
+
+        public async Task ProcessRequestAsync1(Stream requestStream, Stream responseStream)
+        {
+            try
+            {
+                /*var request = await IppRequestMessage.LoadAsync(requestStream);
+                Debug.WriteLine($"[PrintService] Operation: {request.OperationId}");
+
+                if (request.OperationId == IppOperation.PrintJob)
+                {
+                    var document = request.Document;
+                    if (document != null && document.Length > 0)
+                    {
+                        _server.PrintJobReceived?.Invoke(this, $"Processing {document.Length} bytes...");
+                        
+                        if (PdfRenderer.IsPdf(document))
+                        {
+                            var settings = PrintJobSettings.FromPrintQueue(PrintQueueManager.PrinterName);
+                            int w = settings.PaperWidthMm > 0 ? settings.PaperWidthMm : 40;
+                            int h = settings.PaperHeightMm > 0 ? settings.PaperHeightMm : 30;
+                            
+                            var commands = PdfRenderer.RenderToPrintCommands(document, w, h);
+                            if (commands != null)
+                            {
+                                int copies = settings.Copies > 0 ? settings.Copies : 1;
+                                for (int i = 0; i < copies; i++)
+                                {
+                                    await _engine.PrintRawAsync(commands);
+                                    if (copies > 1 && i < copies - 1) await Task.Delay(500);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            await _engine.PrintRawAsync(document);
+                        }
+                    }
+                }
+
+                var response = new IppResponseMessage
+                {
+                    StatusCode = IppStatusCode.SuccessfulOk,
+                    RequestId = request.RequestId
+                };
+                await response.SaveAsync(responseStream);*/
+            }
+            catch (Exception ex)
+            {
+                /*Debug.WriteLine($"[PrintService] Error: {ex.Message}");
+                var errorResponse = new IppResponseMessage
+                {
+                    StatusCode = IppStatusCode.ServerError,
+                    RequestId = 0
+                };
+                await errorResponse.SaveAsync(responseStream);*/
+            }
+        }
+    }
+}
