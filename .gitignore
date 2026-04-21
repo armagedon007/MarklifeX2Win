@@ -1,8 +1,9 @@
 # Build outputs
 old/
-/bin/
-/obj/
-/publish/
+bin/
+obj/
+publish/
+dist/
 *.exe
 *.dll
 *.pdb
