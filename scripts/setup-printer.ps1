@@ -5,7 +5,7 @@
 
 $printerName = "X2 Print Label"
 $printerIP = "127.0.0.1"
-$portNumber = 631
+$portNumber = 9200
 $portName = "Marklife_$printerIP"
 #"http://$printerIP`:$portNumber/$printerName"
 
@@ -34,6 +34,17 @@ Add-Printer -Name $printerName -PortName $portName -DriverName "Microsoft IPP Cl
 #Add-Printer -Name $printerName -PortName $portName -DriverName "Microsoft Print To PDF"
 
 
+ $newPort = ([WMIClass] ''root\cimv2:Win32_TCPIPPrinterPort'').CreateInstance(); 
+ $newPort.Name = ''Marklife_127.0.0.1''; 
+ $newPort.HostAddress = ''127.0.0.1''; 
+ $newPort.PortNumber = 9200; 
+ $newPort.Protocol = 1; 
+ $newPort.Put(); 
+ Add-Printer -Name ''X2 Print Label'' -PortName ''Marklife_127.0.0.1'' -DriverName ''Microsoft IPP Class Driver''; 
+ Restart-Service Spooler -Force -ErrorAction SilentlyContinue';
+
+
+
 Write-Host "=== Copying GPD ===" -ForegroundColor Cyan
 $gpdPath = "C:\Windows\System32\spool\drivers\"
 
@@ -59,12 +70,12 @@ Write-Host "=== Creating forms in registry ===" -ForegroundColor Cyan
 
 $sizes = @(
     @{Name="20mm x 20mm"; W=20000; H=20000},
-    @{Name="40mm x 30mm"; W=40000; H=30000},
-    @{Name="43mm x 25mm"; W=43000; H=25000},
-    @{Name="50mm x 30mm"; W=50000; H=30000},
-    @{Name="60mm x 40mm"; W=60000; H=40000},
-    @{Name="80mm x 60mm"; W=80000; H=60000},
-    @{Name="100mm x 80mm"; W=100000; H=80000}
+    @{Name="40mm x 30mm"; W=30000; H=40000},
+    @{Name="43mm x 25mm"; W=25000; H=43000},
+    @{Name="50mm x 30mm"; W=30000; H=50000},
+    @{Name="60mm x 40mm"; W=40000; H=60000},
+    @{Name="80mm x 60mm"; W=60000; H=80000},
+    @{Name="100mm x 80mm"; W=80000; H=100000}
 )
 
 $formsKey = "HKLM:\SYSTEM\CurrentControlSet\Control\Print\Forms"
