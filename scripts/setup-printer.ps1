@@ -13,6 +13,23 @@ Write-Host "=== Removing old printer ===" -ForegroundColor Cyan
 Remove-Printer -Name $printerName -ErrorAction SilentlyContinue
 Remove-PrinterPort -Name $portName -ErrorAction SilentlyContinue
 
+$DriverName = "Microsoft IPP Class Driver"
+
+# Проверяем, установлен ли драйвер
+$driver = Get-PrinterDriver -Name $DriverName -ErrorAction SilentlyContinue
+
+if ($driver) {
+    Write-Host "✅ Драйвер '$DriverName' уже установлен" -ForegroundColor Green
+} else {
+    Write-Host "❌ Драйвер '$DriverName' не найден. Устанавливаем..." -ForegroundColor Yellow
+    try {
+        Add-PrinterDriver -Name $DriverName -ErrorAction Stop
+        Write-Host "✅ Драйвер '$DriverName' успешно установлен" -ForegroundColor Green
+    } catch {
+        Write-Host "❌ Ошибка установки драйвера: $_" -ForegroundColor Red
+        exit 1
+    }
+}
 
 Write-Host "=== Creating TCP/IP port $portNumber ===" -ForegroundColor Cyan
 
@@ -27,23 +44,11 @@ $newPort.PortNumber = $portNumber
 $newPort.Protocol = 1
 $newPort.Put()
 
+Add-Printer -Name $printerName -PortName $portName -DriverName $DriverName; 
+
 Write-Host "Port created: $portName (port $portNumber)" -ForegroundColor Green
 
-Write-Host "=== Creating printer ===" -ForegroundColor Cyan
-Add-Printer -Name $printerName -PortName $portName -DriverName "Microsoft IPP Class Driver"
-#Add-Printer -Name $printerName -PortName $portName -DriverName "Microsoft Print To PDF"
-
-
- $newPort = ([WMIClass] ''root\cimv2:Win32_TCPIPPrinterPort'').CreateInstance(); 
- $newPort.Name = ''Marklife_127.0.0.1''; 
- $newPort.HostAddress = ''127.0.0.1''; 
- $newPort.PortNumber = 9200; 
- $newPort.Protocol = 1; 
- $newPort.Put(); 
- Add-Printer -Name ''X2 Print Label'' -PortName ''Marklife_127.0.0.1'' -DriverName ''Microsoft IPP Class Driver''; 
- Restart-Service Spooler -Force -ErrorAction SilentlyContinue';
-
-
+Restart-Service Spooler -Force -ErrorAction SilentlyContinue';
 
 Write-Host "=== Copying GPD ===" -ForegroundColor Cyan
 $gpdPath = "C:\Windows\System32\spool\drivers\"
